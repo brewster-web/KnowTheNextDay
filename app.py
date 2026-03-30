@@ -1,0 +1,379 @@
+from flask import Flask, render_template_string
+
+app = Flask(__name__)
+
+HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Know the Next Day</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border-strong: rgba(255,255,255,0.22);
+      --text: #f0ede6;
+      --muted: #777;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .headline {
+      font-size: clamp(30px, 7vw, 50px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      text-align: center;
+      line-height: 1.05;
+      margin-bottom: 0.5rem;
+    }
+    .tagline {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.06em;
+      margin-bottom: 2.5rem;
+    }
+    .card {
+      width: 100%;
+      background: var(--surface);
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 2rem 2rem 2.25rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .field-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      align-self: flex-start;
+      margin-bottom: -0.5rem;
+    }
+    select {
+      width: 100%;
+      padding: 0.8rem 2.5rem 0.8rem 1rem;
+      font-size: 16px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23777' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    select:focus { outline: none; border-color: rgba(255,255,255,0.4); }
+    select option { background: #1a1a1a; }
+    #knowBtn {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      font-size: 15px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    #knowBtn:hover { opacity: 0.88; }
+    #knowBtn:active { transform: scale(0.985); }
+    #knowBtn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    #loader {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      width: 100%;
+    }
+    .spinner {
+      width: 52px; height: 52px;
+      border: 2.5px solid rgba(255,255,255,0.08);
+      border-top-color: rgba(255,255,255,0.7);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #phraseBox {
+      min-height: 52px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .phrase {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+      position: absolute;
+      width: 100%;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      pointer-events: none;
+    }
+    .phrase.active {
+      opacity: 1;
+      transform: translateY(0);
+      position: relative;
+    }
+    .phrase.exiting {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    #progressTrack {
+      width: 100%;
+      height: 2px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    #progressFill {
+      height: 100%;
+      background: rgba(255,255,255,0.55);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.35s ease;
+    }
+    #result {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      width: 100%;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.82); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .res-eyebrow {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .res-input-day {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .res-answer {
+      font-size: clamp(42px, 12vw, 64px);
+      font-weight: 800;
+      letter-spacing: -2.5px;
+      line-height: 1;
+      margin: 0.15rem 0;
+    }
+    .res-note {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+      padding: 0 0.5rem;
+    }
+    #resetBtn {
+      margin-top: 0.5rem;
+      padding: 0.5rem 1.5rem;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      background: transparent;
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #resetBtn:hover { border-color: rgba(255,255,255,0.4); color: var(--text); }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="headline">Know the<br>Next Day</div>
+  <div class="tagline">// powered by 3 AIs, 2 quantum computers &amp; 1 confused intern</div>
+
+  <div class="card">
+    <div id="inputSection" style="width:100%;display:flex;flex-direction:column;gap:1.25rem;">
+      <div class="field-label">Select a day</div>
+      <select id="daySelect">
+        <option>Monday</option>
+        <option>Tuesday</option>
+        <option>Wednesday</option>
+        <option>Thursday</option>
+        <option>Friday</option>
+        <option>Saturday</option>
+        <option>Sunday</option>
+      </select>
+      <button id="knowBtn">Know the next day &#8594;</button>
+    </div>
+
+    <div id="loader">
+      <div class="spinner"></div>
+      <div id="phraseBox">
+        <div class="phrase active" id="currentPhrase">initializing...</div>
+      </div>
+      <div id="progressTrack"><div id="progressFill"></div></div>
+    </div>
+
+    <div id="result">
+      <div class="res-eyebrow">after extensive research, the next day after</div>
+      <div class="res-input-day" id="resInputDay"></div>
+      <div class="res-eyebrow">is definitively...</div>
+      <div class="res-answer" id="resAnswer"></div>
+      <div class="res-note" id="resNote"></div>
+      <button id="resetBtn">try another day</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+  var PHRASES = [
+    "booting up calendar.exe...",
+    "consulting the ancient gregorian scrolls...",
+    "asking ChatGPT, Claude and Gemini simultaneously...",
+    "ChatGPT said it depends. Claude wrote an essay. Gemini called it fascinating.",
+    "quantum-entangling the days of the week...",
+    "phoning the intern for verification...",
+    "intern is on a chai break. waiting...",
+    "intern is back. cross-referencing 3 blockchain oracles...",
+    "running final sanity checks...",
+    "compiling your answer..."
+  ];
+
+  var NOTES = [
+    "results independently verified by ChatGPT, Gemini, and a suspicious oracle.",
+    "this took 3 AIs, 1 intern, and a quantum computer to figure out.",
+    "accuracy not guaranteed outside the gregorian calendar.",
+    "no days were harmed in the making of this calculation.",
+    "our scientists worked tirelessly for exactly 10 seconds on this."
+  ];
+
+  var phraseTimers = [];
+  var TOTAL_MS = 20000;
+
+  function startCalculation() {
+    var selected = document.getElementById("daySelect").value;
+    document.getElementById("inputSection").style.display = "none";
+    document.getElementById("loader").style.display = "flex";
+    document.getElementById("knowBtn").disabled = true;
+
+    var phraseEl = document.getElementById("currentPhrase");
+    phraseEl.textContent = PHRASES[0];
+    phraseEl.className = "phrase active";
+
+    var shown = Math.min(PHRASES.length, Math.floor(TOTAL_MS / 2000));
+    for (var i = 1; i < shown; i++) {
+      (function(idx) {
+        var t = setTimeout(function() {
+          switchPhrase(PHRASES[idx]);
+        }, idx * 2000);
+        phraseTimers.push(t);
+      })(i);
+    }
+
+    var prog = 0;
+    var progInterval = setInterval(function() {
+      prog = Math.min(prog + 1, 97);
+      document.getElementById("progressFill").style.width = prog + "%";
+    }, 100);
+    phraseTimers.push(progInterval);
+
+    setTimeout(function() {
+      clearInterval(progInterval);
+      document.getElementById("progressFill").style.width = "100%";
+      setTimeout(function() { showResult(selected); }, 300);
+    }, TOTAL_MS);
+  }
+
+  function switchPhrase(text) {
+    var el = document.getElementById("currentPhrase");
+    el.classList.add("exiting");
+    el.classList.remove("active");
+    setTimeout(function() {
+      el.textContent = text;
+      el.classList.remove("exiting");
+      el.classList.add("active");
+    }, 500);
+  }
+
+  function showResult(selected) {
+    document.getElementById("loader").style.display = "none";
+    var idx = DAYS.indexOf(selected);
+    var next = DAYS[(idx + 1) % 7];
+    document.getElementById("resInputDay").textContent = selected;
+    document.getElementById("resAnswer").textContent = next;
+    var note = NOTES[Math.floor(Math.random() * NOTES.length)];
+    document.getElementById("resNote").textContent = note;
+    document.getElementById("result").style.display = "flex";
+  }
+
+  function reset() {
+    for (var i = 0; i < phraseTimers.length; i++) {
+      clearTimeout(phraseTimers[i]);
+      clearInterval(phraseTimers[i]);
+    }
+    phraseTimers = [];
+    document.getElementById("result").style.display = "none";
+    document.getElementById("progressFill").style.width = "0%";
+    var phraseEl = document.getElementById("currentPhrase");
+    phraseEl.textContent = PHRASES[0];
+    phraseEl.className = "phrase active";
+    document.getElementById("knowBtn").disabled = false;
+    document.getElementById("inputSection").style.display = "flex";
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("knowBtn").addEventListener("click", startCalculation);
+    document.getElementById("resetBtn").addEventListener("click", reset);
+  });
+</script>
+</body>
+</html>"""
+
+
+@app.route("/")
+def index():
+    return render_template_string(HTML)
+
+
+if __name__ == "__main__":
+    print("\n🚀  Know the Next Day is running!")
+    print("   Open http://localhost:5000 in your browser\n")
+    app.run(debug=True, port=5000)
