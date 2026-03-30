@@ -266,10 +266,10 @@
     "asking ChatGPT, Claude and Gemini simultaneously...",
     "ChatGPT said it depends. Claude wrote an essay. Gemini called it fascinating.",
     "quantum-entangling the days of the week...",
+    "system is over-heating...",
+    "using water from hussain sagar to cool down...",
+    "we are back on track...",
     "phoning the intern for verification...",
-    "system is over-heating",
-    "using water from hussain sagar to cool down",
-    "we are back on track",
     "intern is on a chai break. waiting...",
     "intern is back. cross-referencing 3 blockchain oracles...",
     "running final sanity checks...",
@@ -285,7 +285,8 @@
   ];
 
   var phraseTimers = [];
-  var TOTAL_MS = 30000;
+  var TOTAL_MS = 26000;
+  var PHRASE_INTERVAL = 2000;
 
   function startCalculation() {
     var selected = document.getElementById("daySelect").value;
@@ -297,12 +298,11 @@
     phraseEl.textContent = PHRASES[0];
     phraseEl.className = "phrase active";
 
-    var shown = Math.min(PHRASES.length, Math.floor(TOTAL_MS / 2000));
-    for (var i = 1; i < shown; i++) {
+    for (var i = 1; i < PHRASES.length; i++) {
       (function(idx) {
         var t = setTimeout(function() {
           switchPhrase(PHRASES[idx]);
-        }, idx * 3000);
+        }, idx * PHRASE_INTERVAL);
         phraseTimers.push(t);
       })(i);
     }
@@ -311,7 +311,7 @@
     var progInterval = setInterval(function() {
       prog = Math.min(prog + 1, 97);
       document.getElementById("progressFill").style.width = prog + "%";
-    }, 300);
+    }, TOTAL_MS / 97);
     phraseTimers.push(progInterval);
 
     setTimeout(function() {
@@ -329,7 +329,7 @@
       el.textContent = text;
       el.classList.remove("exiting");
       el.classList.add("active");
-    }, 1000);
+    }, 500);
   }
 
   function showResult(selected) {
