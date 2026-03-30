@@ -302,7 +302,7 @@
       (function(idx) {
         var t = setTimeout(function() {
           switchPhrase(PHRASES[idx]);
-        }, idx * 2000);
+        }, idx * 3000);
         phraseTimers.push(t);
       })(i);
     }
@@ -311,7 +311,7 @@
     var progInterval = setInterval(function() {
       prog = Math.min(prog + 1, 97);
       document.getElementById("progressFill").style.width = prog + "%";
-    }, 100);
+    }, 300);
     phraseTimers.push(progInterval);
 
     setTimeout(function() {
@@ -329,7 +329,7 @@
       el.textContent = text;
       el.classList.remove("exiting");
       el.classList.add("active");
-    }, 500);
+    }, 1000);
   }
 
   function showResult(selected) {
